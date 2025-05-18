@@ -26,7 +26,7 @@ def registration():
 def login():
     form = LoginForm()
 
-    if form.validate_on_submit():  # Срабатывает только при POST
+    if form.validate_on_submit():
         admin = Admin.query.filter_by(login=form.login.data).first()
         if admin and bcrypt.check_password_hash(admin.password, form.password.data):
             login_user(admin)
@@ -35,7 +35,6 @@ def login():
         else:
             flash('Неверный логин или пароль', 'danger')
 
-    # GET-запрос или ошибка валидации
     return render_template('admin/login.html', form=form)
 
 @admin.route('/admin/logout', methods=['GET', 'POST'])
