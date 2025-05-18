@@ -39,10 +39,8 @@ def all():
     supports = []
 
     if request.method == "POST" and form.validate():
-        # Проверка ИИ-режима
         use_ai = hasattr(form, 'use_ai') and form.use_ai.data and recommender_service
 
-        # Для ИИ-режима проверяем заполнение текстовых полей
         if use_ai and (not form.support_purpose.data or not form.project_description.data):
             flash("Для ИИ-подбора необходимо заполнить оба текстовых поля", "warning")
             return render_template('supportMeasure/all.html',
@@ -53,7 +51,6 @@ def all():
                                    all_regions=all_regions,
                                    all_business_forms=all_business_forms)
 
-        # Применяем фильтры
         if form.categories.data:
             query = query.join(MeasureCategory).join(Category).filter(
                 MeasureCategory.categoryID.in_(form.categories.data),
@@ -80,7 +77,6 @@ def all():
                 MeasureBRF.brfID.in_(form.business_forms.data)
             )
 
-        # Обработка ИИ-режима
         if use_ai:
             try:
                 query_data = {
@@ -94,8 +90,6 @@ def all():
                 ai_mode = True
             except Exception as e:
                 flash(f"Ошибка ИИ-рекомендаций: {str(e)}", "danger")
-
-        # Если не ИИ-режим или произошла ошибка - используем обычный запрос
     if not ai_mode:
         supports = query.distinct().all()
 
@@ -112,7 +106,6 @@ def all():
 def create():
     form = SupportMeasureForm()
 
-    # Получаем данные для выпадающих списков
     industries = Industry.query.order_by(Industry.industryName).all()
     regions = Region.query.order_by(Region.regionName).all()
     business_forms = BusinessRegistrationForm.query.order_by(BusinessRegistrationForm.BRFName).all()
@@ -120,7 +113,6 @@ def create():
 
     if request.method == 'POST':
         try:
-            # Основные данные формы
             support_measure = SupportMeasure(
                 name=request.form['name'],
                 description=request.form['description'],
@@ -132,7 +124,6 @@ def create():
             db.session.add(support_measure)
             db.session.flush()
 
-            # Обработка множественного выбора
             def add_relations(ids, relation_model, measure_field, id_field):
                 for id in ids:
                     relation = relation_model(**{
@@ -168,13 +159,11 @@ def update(idSupportMeasure):
     support = SupportMeasure.query.get_or_404(idSupportMeasure)
     form = SupportMeasureForm(obj=support)
 
-    # Получаем все возможные варианты для выбора
     industries = Industry.query.order_by(Industry.industryName).all()
     regions = Region.query.order_by(Region.regionName).all()
     business_forms = BusinessRegistrationForm.query.order_by(BusinessRegistrationForm.BRFName).all()
     categories = Category.query.order_by(Category.categoryName).all()
 
-    # Получаем текущие выбранные значения
     current_industries = [mi.industryID for mi in support.industries]
     current_regions = [mr.regionID for mr in support.regions]
     current_business_forms = [mbf.brfID for mbf in support.brf]
@@ -184,13 +173,11 @@ def update(idSupportMeasure):
         try:
             form.populate_obj(support)
 
-            # Получаем новые выбранные значения
             new_industry_ids = [int(id) for id in request.form.getlist('industries')]
             new_region_ids = [int(id) for id in request.form.getlist('regions')]
             new_business_form_ids = [int(id) for id in request.form.getlist('businessForms')]
             new_category_ids = [int(id) for id in request.form.getlist('categories')]
 
-            # Обновляем связи
             update_relations(support.industries, MeasureIndustry, 'industryID', current_industries, new_industry_ids,
                            support.idSupportMeasure)
             update_relations(support.regions, MeasureRegion, 'regionID', current_regions, new_region_ids,
@@ -222,12 +209,10 @@ def update(idSupportMeasure):
 
 
 def update_relations(current_relations, relation_model, id_field, current_ids, new_ids, measure_id):
-    # Удаляем удаленные связи
     for rel in current_relations:
         if getattr(rel, id_field) not in new_ids:
             db.session.delete(rel)
 
-    # Добавляем новые связи
     for new_id in new_ids:
         if new_id not in current_ids:
             new_rel = relation_model()
